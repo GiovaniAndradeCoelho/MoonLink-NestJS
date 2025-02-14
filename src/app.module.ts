@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { DatabaseModule } from './database.module';
 
 @Module({
   imports: [
@@ -8,7 +9,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
       ttl: 60000,
       limit: 10,
     }]),
-    ConfigModule.forRoot({ isGlobal: true })
+    ConfigModule.forRoot({ isGlobal: true }),
+    DatabaseModule
   ],
   controllers: [],
   providers: [],
