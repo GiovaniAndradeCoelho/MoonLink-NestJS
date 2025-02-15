@@ -6,6 +6,7 @@ import { ClientsModule } from './modules/clients/clients.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { TransportsModule } from './modules/transports/transports.module';
+import { RoutingModule } from './modules/routing/routing.module';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { TransportsModule } from './modules/transports/transports.module';
     ClientsModule,
     VehiclesModule,
     DriversModule,
-    TransportsModule
+    TransportsModule,
+    RoutingModule
   ],
   controllers: [],
   providers: [],
