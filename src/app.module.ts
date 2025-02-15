@@ -3,6 +3,9 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { DatabaseModule } from './database.module';
 import { ClientsModule } from './modules/clients/clients.module';
+import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { DriversModule } from './modules/drivers/drivers.module';
+import { TransportsModule } from './modules/transports/transports.module';
 
 @Module({
   imports: [
@@ -12,7 +15,10 @@ import { ClientsModule } from './modules/clients/clients.module';
     }]),
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
-    ClientsModule
+    ClientsModule,
+    VehiclesModule,
+    DriversModule,
+    TransportsModule
   ],
   controllers: [],
   providers: [],
