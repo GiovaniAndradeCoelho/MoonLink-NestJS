@@ -1,14 +1,19 @@
+// src/modules/transports/transports.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Transport } from './entities/transport.entity';
+import { Driver } from '../drivers/entities/driver.entity';
+import { Vehicle } from '../vehicles/entities/vehicle.entity';
 import { TransportsService } from './transports.service';
 import { TransportsController } from './transports.controller';
-import { Driver } from 'src/modules/drivers/entities/driver.entity';
-import { Vehicle } from 'src/modules/vehicles/entities/vehicle.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Transport, Driver, Vehicle])],
-  controllers: [TransportsController],
+  imports: [
+    TypeOrmModule.forFeature([Transport, Driver, Vehicle]),
+    NotificationsModule,
+  ],
   providers: [TransportsService],
+  controllers: [TransportsController],
 })
 export class TransportsModule {}

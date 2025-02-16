@@ -7,6 +7,7 @@ import { CreateTransportDto } from './dto/create-transport.dto';
 import { UpdateTransportDto } from './dto/update-transport.dto';
 import { Driver } from 'src/modules/drivers/entities/driver.entity';
 import { Vehicle } from 'src/modules/vehicles/entities/vehicle.entity';
+import { NotificationsService } from '../notifications/notifications/notifications.service';
 
 @Injectable()
 export class TransportsService {
@@ -17,6 +18,7 @@ export class TransportsService {
     private readonly driverRepository: Repository<Driver>,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -45,7 +47,15 @@ export class TransportsService {
         transport.vehicle = vehicle;
       }
 
-      return await this.transportRepository.save(transport);
+      const savedTransport = await this.transportRepository.save(transport);
+
+      // Envia notificação para criação de transporte
+      this.notificationsService.notify({
+        type: 'CREATE_TRANSPORT',
+        data: savedTransport,
+      });
+
+      return savedTransport;
     } catch (error) {
       throw new BadRequestException(`Erro ao criar transporte: ${error.message}`);
     }
@@ -95,7 +105,15 @@ export class TransportsService {
     Object.assign(transport, updateData);
 
     try {
-      return await this.transportRepository.save(transport);
+      const updatedTransport = await this.transportRepository.save(transport);
+
+      this.notificationsService.notify({
+        type: 'UPDATE_TRANSPORT',
+        id,
+        data: updatedTransport,
+      });
+
+      return updatedTransport;
     } catch (error) {
       throw new BadRequestException(`Erro ao atualizar transporte: ${error.message}`);
     }
@@ -109,6 +127,13 @@ export class TransportsService {
     if (result.affected === 0) {
       throw new NotFoundException(`Transporte com id ${id} não encontrado`);
     }
+
+    // Envia notificação para remoção de transporte
+    this.notificationsService.notify({
+      type: 'REMOVE_TRANSPORT',
+      id,
+    });
+
     return { message: 'Transporte removido com sucesso' };
   }
 }
