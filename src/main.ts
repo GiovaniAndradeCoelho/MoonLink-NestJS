@@ -11,11 +11,11 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
-    forbidNonWhitelisted: true, 
+    forbidNonWhitelisted: true,
   }));
 
   app.enableCors({
-    origin: [process.env.ALLOW_DOMAINS],
+    origin: 'http://localhost:4200',
   });
 
   await app.listen(6006);

@@ -6,7 +6,8 @@ import { Vehicle } from 'src/modules/vehicles/entities/vehicle.entity';
 export enum TransportType {
   FREIGHT = 'FREIGHT',
   LAST_MILE = 'LAST_MILE',
-  // Outros tipos podem ser adicionados
+  FTL = 'FTL',
+  LTL = 'LTL'
 }
 
 export enum TransportStatus {
@@ -67,4 +68,3 @@ export class Transport {
   @UpdateDateColumn({ type: 'timestamp', comment: 'Data de atualização do registro' })
   updatedAt: Date;
 }
-    

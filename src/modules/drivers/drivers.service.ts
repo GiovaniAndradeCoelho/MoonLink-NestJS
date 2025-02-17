@@ -1,7 +1,7 @@
 // src/modules/drivers/drivers.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindManyOptions, Repository } from 'typeorm';
 import { Driver, DriverApprovalStatus } from './entities/driver.entity';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
@@ -26,8 +26,25 @@ export class DriversService {
     }
   }
 
-  async findAll(): Promise<Driver[]> {
-    return await this.driverRepository.find({ relations: ['vehicles'] });
+  async findAll(select?: string[]): Promise<Driver[]> {
+    const options: FindManyOptions<Driver> = {};
+
+    if (select && select.length > 0) {
+      if (select.includes('vehicles')) {
+        options.relations = ['vehicles'];
+        select = select.filter(field => field !== 'vehicles');
+      }
+
+      if (select.length > 0) {
+        options.select = select as (keyof Driver)[];
+      }
+    } else {
+      options.relations = ['vehicles'];
+    }
+
+    const response = await this.driverRepository.find(options);
+  
+    return response;
   }
 
   async findOne(id: string): Promise<Driver> {

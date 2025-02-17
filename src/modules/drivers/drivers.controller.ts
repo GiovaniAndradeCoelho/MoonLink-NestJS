@@ -1,5 +1,5 @@
 // src/modules/drivers/drivers.controller.ts
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus, ValidationPipe, Query } from '@nestjs/common';
 import { ParseUUIDPipe } from '@nestjs/common';
 import { DriversService } from './drivers.service';
 import { Driver } from './entities/driver.entity';
@@ -7,6 +7,7 @@ import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
 import { AssignVehicleDto } from './dto/assign-vehicle.dto';
 import { UpdateDriverDocumentsDto } from './dto/update-driver-documents.dto';
+import { fileURLToPath } from 'url';
 
 @Controller('drivers')
 export class DriversController {
@@ -22,8 +23,9 @@ export class DriversController {
   }
 
   @Get()
-  async findAll(): Promise<Driver[]> {
-    return await this.driversService.findAll();
+  async findAll(@Query('fields') fields: string): Promise<Driver[]> {
+    const fieldsArray = fields ? fields.split(',').map(f => f.trim()) : undefined;
+    return await this.driversService.findAll(fieldsArray);
   }
 
   @Get(':id')
