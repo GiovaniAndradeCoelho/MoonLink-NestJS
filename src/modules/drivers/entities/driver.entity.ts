@@ -34,13 +34,26 @@ export class Driver {
     type: 'enum',
     enum: DriverApprovalStatus,
     default: DriverApprovalStatus.PENDING,
-    comment: 'Status de aprovação do motorista'
+    comment: 'Status de aprovação do motorista',
   })
   approvalStatus: DriverApprovalStatus;
 
   // Documentação enviada pelo motorista para validação (ex.: links ou dados dos documentos)
   @Column({ type: 'json', nullable: true, comment: 'Documentação fornecida pelo motorista para validação' })
   documents: any;
+
+  // Campos de auditoria
+  @Column({ comment: 'ID do usuário que criou o motorista' })
+  createdBy: string;
+
+  @Column({ nullable: true, comment: 'ID do usuário que atualizou o motorista pela última vez' })
+  updatedBy?: string;
+
+  @Column({ nullable: true, comment: 'ID do usuário que removeu o motorista' })
+  removedBy?: string;
+
+  @Column({ type: 'timestamp', nullable: true, comment: 'Data de remoção do motorista (soft delete)' })
+  removedAt?: Date;
 
   @CreateDateColumn({ type: 'timestamp', comment: 'Data de criação do registro' })
   createdAt: Date;
