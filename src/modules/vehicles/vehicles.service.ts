@@ -5,12 +5,14 @@ import { Repository } from 'typeorm';
 import { Vehicle } from './entities/vehicle.entity';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { NotificationsService } from '../notifications/notifications/notifications.service';
 
 @Injectable()
 export class VehiclesService {
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -19,7 +21,15 @@ export class VehiclesService {
   async create(createVehicleDto: CreateVehicleDto): Promise<Vehicle> {
     try {
       const vehicle = this.vehicleRepository.create(createVehicleDto);
-      return await this.vehicleRepository.save(vehicle);
+      const savedVehicle = await this.vehicleRepository.save(vehicle);
+
+      // Envia notificação para criação de veículo
+      this.notificationsService.notify({
+        type: 'CREATE_VEHICLE',
+        data: savedVehicle,
+      });
+
+      return savedVehicle;
     } catch (error) {
       throw new BadRequestException(`Erro ao criar veículo: ${error.message}`);
     }
@@ -50,7 +60,15 @@ export class VehiclesService {
     const vehicle = await this.findOne(id);
     Object.assign(vehicle, updateVehicleDto);
     try {
-      return await this.vehicleRepository.save(vehicle);
+      const updatedVehicle = await this.vehicleRepository.save(vehicle);
+
+      // Envia notificação para atualização de veículo
+      this.notificationsService.notify({
+        type: 'UPDATE_VEHICLE',
+        data: updatedVehicle,
+      });
+
+      return updatedVehicle;
     } catch (error) {
       throw new BadRequestException(`Erro ao atualizar veículo: ${error.message}`);
     }
@@ -60,10 +78,18 @@ export class VehiclesService {
    * Remove um veículo pelo seu UUID.
    */
   async remove(id: string): Promise<{ message: string }> {
+    const vehicle = await this.findOne(id);
     const result = await this.vehicleRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Veículo com id ${id} não encontrado`);
     }
+
+    // Envia notificação para remoção de veículo
+    this.notificationsService.notify({
+      type: 'REMOVE_VEHICLE',
+      data: { id, message: 'Veículo removido com sucesso' },
+    });
+
     return { message: 'Veículo removido com sucesso' };
   }
 }
