@@ -10,7 +10,6 @@ import { UsersService } from './users.controller';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // CRUD Básico
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
