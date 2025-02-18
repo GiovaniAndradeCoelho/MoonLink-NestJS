@@ -1,6 +1,7 @@
 // src/modules/clients/dto/create-client.dto.ts
-import { IsString, IsNotEmpty, IsEmail, IsOptional, ValidateNested } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, IsOptional, ValidateNested, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ClientType } from '../entities/client.entity';
 
 export class AddressDto {
   @IsString()
@@ -40,7 +41,7 @@ export class CreateClientDto {
   @IsString()
   phone?: string;
 
-  // The address is expected as an object and will be converted to a formatted string in the service.
+  // O endereço é recebido como objeto e será convertido para string no serviço.
   @IsOptional()
   @ValidateNested()
   @Type(() => AddressDto)
@@ -50,5 +51,27 @@ export class CreateClientDto {
   @IsString()
   cpf?: string;
 
-  // Add additional optional fields (e.g., cnpj, businessName, etc.) as needed.
+  @IsOptional()
+  @IsEnum(ClientType)
+  clientType?: ClientType;
+
+  @IsOptional()
+  @IsString()
+  cnpj?: string;
+
+  @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @IsOptional()
+  @IsString()
+  stateRegistration?: string;
+
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
