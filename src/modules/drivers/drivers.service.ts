@@ -2,11 +2,12 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, Repository } from 'typeorm';
-import { Driver, DriverApprovalStatus } from './entities/driver.entity';
+import { Driver } from './entities/driver.entity';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
 import { UpdateDriverDocumentsDto } from './dto/update-driver-documents.dto';
 import { Vehicle } from 'src/modules/vehicles/entities/vehicle.entity';
+import { NotificationsService } from '../notifications/notifications/notifications.service';
 
 @Injectable()
 export class DriversService {
@@ -15,12 +16,21 @@ export class DriversService {
     private readonly driverRepository: Repository<Driver>,
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(createDriverDto: CreateDriverDto): Promise<Driver> {
     try {
       const driver = this.driverRepository.create(createDriverDto);
-      return await this.driverRepository.save(driver);
+      const savedDriver = await this.driverRepository.save(driver);
+
+      // Notificar criação de motorista
+      this.notificationsService.notify({
+        type: 'DRIVER_CREATED',
+        data: savedDriver,
+      });
+
+      return savedDriver;
     } catch (error) {
       throw new BadRequestException(`Erro ao criar motorista: ${error.message}`);
     }
@@ -43,7 +53,6 @@ export class DriversService {
     }
 
     const response = await this.driverRepository.find(options);
-  
     return response;
   }
 
@@ -59,17 +68,33 @@ export class DriversService {
     const driver = await this.findOne(id);
     Object.assign(driver, updateDriverDto);
     try {
-      return await this.driverRepository.save(driver);
+      const updatedDriver = await this.driverRepository.save(driver);
+
+      // Notificar atualização do motorista
+      this.notificationsService.notify({
+        type: 'DRIVER_UPDATED',
+        data: updatedDriver,
+      });
+
+      return updatedDriver;
     } catch (error) {
       throw new BadRequestException(`Erro ao atualizar motorista: ${error.message}`);
     }
   }
 
   async remove(id: string): Promise<{ message: string }> {
+    const driver = await this.findOne(id);
     const result = await this.driverRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Motorista com id ${id} não encontrado`);
     }
+
+    // Notificar remoção do motorista
+    this.notificationsService.notify({
+      type: 'DRIVER_REMOVED',
+      data: { id, message: 'Motorista removido com sucesso' },
+    });
+
     return { message: 'Motorista removido com sucesso' };
   }
 
@@ -81,7 +106,15 @@ export class DriversService {
     }
     vehicle.driver = driver;
     await this.vehicleRepository.save(vehicle);
-    return await this.findOne(driverId);
+    const updatedDriver = await this.findOne(driverId);
+
+    // Notificar atribuição de veículo ao motorista
+    this.notificationsService.notify({
+      type: 'DRIVER_VEHICLE_ASSIGNED',
+      data: { driver: updatedDriver, vehicleId },
+    });
+
+    return updatedDriver;
   }
 
   /**
@@ -92,7 +125,15 @@ export class DriversService {
     const driver = await this.findOne(driverId);
     Object.assign(driver, updateDriverDocumentsDto);
     try {
-      return await this.driverRepository.save(driver);
+      const updatedDriver = await this.driverRepository.save(driver);
+
+      // Notificar atualização dos documentos do motorista
+      this.notificationsService.notify({
+        type: 'DRIVER_DOCUMENTS_UPDATED',
+        data: updatedDriver,
+      });
+
+      return updatedDriver;
     } catch (error) {
       throw new BadRequestException(`Erro ao atualizar documentação do motorista: ${error.message}`);
     }
