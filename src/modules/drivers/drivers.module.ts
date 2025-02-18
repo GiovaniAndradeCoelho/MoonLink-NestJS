@@ -4,9 +4,10 @@ import { DriversController } from './drivers.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Driver } from './entities/driver.entity';
 import { Vehicle } from '../vehicles/entities/vehicle.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Driver, Vehicle])],
+  imports: [TypeOrmModule.forFeature([Driver, Vehicle]), NotificationsModule],
   controllers: [DriversController],
   providers: [DriversService],
 })
