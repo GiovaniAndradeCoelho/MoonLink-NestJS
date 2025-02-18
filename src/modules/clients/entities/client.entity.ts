@@ -1,4 +1,4 @@
-// src/modules/clientes/entities/client.entity.ts
+// src/modules/clients/entities/client.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 /**
@@ -53,6 +53,19 @@ export class Client {
 
   @Column({ nullable: true, type: 'text', comment: 'Observações adicionais sobre o cliente' })
   notes: string;
+
+  // Campos de auditoria
+  @Column({ comment: 'ID do usuário que criou o cliente' })
+  createdBy: string;
+
+  @Column({ nullable: true, comment: 'ID do usuário que atualizou o cliente pela última vez' })
+  updatedBy?: string;
+
+  @Column({ nullable: true, comment: 'ID do usuário que removeu o cliente' })
+  removedBy?: string;
+
+  @Column({ type: 'timestamp', nullable: true, comment: 'Data de remoção do cliente (soft delete)' })
+  removedAt?: Date | null;
 
   @CreateDateColumn({ type: 'timestamp', comment: 'Data de criação do registro' })
   createdAt: Date;
