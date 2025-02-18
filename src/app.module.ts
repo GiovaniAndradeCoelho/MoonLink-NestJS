@@ -8,6 +8,7 @@ import { DriversModule } from './modules/drivers/drivers.module';
 import { TransportsModule } from './modules/transports/transports.module';
 import { RoutingModule } from './modules/routing/routing.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -22,7 +23,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     DriversModule,
     TransportsModule,
     RoutingModule,
-    NotificationsModule
+    NotificationsModule,
+    UsersModule
   ],
   controllers: [],
   providers: [],
