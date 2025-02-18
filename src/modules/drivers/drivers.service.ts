@@ -1,8 +1,8 @@
 // src/modules/drivers/drivers.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindManyOptions, Repository } from 'typeorm';
-import { Driver } from './entities/driver.entity';
+import { FindManyOptions, Repository, IsNull } from 'typeorm';
+import { Driver, DriverApprovalStatus } from './entities/driver.entity';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
 import { UpdateDriverDocumentsDto } from './dto/update-driver-documents.dto';
@@ -19,9 +19,17 @@ export class DriversService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  async create(createDriverDto: CreateDriverDto): Promise<Driver> {
+  /**
+   * Cria um novo motorista.
+   * @param createDriverDto Dados para criação do motorista.
+   * @param userId ID do usuário que está criando o motorista.
+   */
+  async create(createDriverDto: CreateDriverDto, userId: string): Promise<Driver> {
     try {
-      const driver = this.driverRepository.create(createDriverDto);
+      const driver = this.driverRepository.create({
+        ...createDriverDto,
+        createdBy: userId,
+      });
       const savedDriver = await this.driverRepository.save(driver);
 
       // Notificar criação de motorista
@@ -36,15 +44,19 @@ export class DriversService {
     }
   }
 
+  /**
+   * Retorna todos os motoristas que não foram removidos (soft delete).
+   */
   async findAll(select?: string[]): Promise<Driver[]> {
-    const options: FindManyOptions<Driver> = {};
+    const options: FindManyOptions<Driver> = {
+      where: { removedAt: IsNull() },
+    };
 
     if (select && select.length > 0) {
       if (select.includes('vehicles')) {
         options.relations = ['vehicles'];
         select = select.filter(field => field !== 'vehicles');
       }
-
       if (select.length > 0) {
         options.select = select as (keyof Driver)[];
       }
@@ -52,21 +64,33 @@ export class DriversService {
       options.relations = ['vehicles'];
     }
 
-    const response = await this.driverRepository.find(options);
-    return response;
+    return await this.driverRepository.find(options);
   }
 
+  /**
+   * Retorna um motorista pelo seu UUID.
+   */
   async findOne(id: string): Promise<Driver> {
-    const driver = await this.driverRepository.findOne({ where: { id }, relations: ['vehicles'] });
+    const driver = await this.driverRepository.findOne({
+      where: { id, removedAt: IsNull() },
+      relations: ['vehicles'],
+    });
     if (!driver) {
       throw new NotFoundException(`Motorista com id ${id} não encontrado`);
     }
     return driver;
   }
 
-  async update(id: string, updateDriverDto: UpdateDriverDto): Promise<Driver> {
+  /**
+   * Atualiza um motorista existente.
+   * @param id ID do motorista.
+   * @param updateDriverDto Dados para atualização do motorista.
+   * @param userId ID do usuário que está atualizando o motorista.
+   */
+  async update(id: string, updateDriverDto: UpdateDriverDto, userId: string): Promise<Driver> {
     const driver = await this.findOne(id);
     Object.assign(driver, updateDriverDto);
+    driver.updatedBy = userId;
     try {
       const updatedDriver = await this.driverRepository.save(driver);
 
@@ -82,22 +106,35 @@ export class DriversService {
     }
   }
 
-  async remove(id: string): Promise<{ message: string }> {
+  /**
+   * Realiza a remoção (soft delete) de um motorista.
+   * @param id ID do motorista.
+   * @param userId ID do usuário que está removendo o motorista.
+   */
+  async remove(id: string, userId: string): Promise<{ message: string }> {
     const driver = await this.findOne(id);
-    const result = await this.driverRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Motorista com id ${id} não encontrado`);
+    driver.removedBy = userId;
+    driver.removedAt = new Date();
+    try {
+      await this.driverRepository.save(driver);
+
+      // Notificar remoção do motorista
+      this.notificationsService.notify({
+        type: 'DRIVER_REMOVED',
+        data: { id, message: 'Motorista removido com sucesso' },
+      });
+
+      return { message: 'Motorista removido com sucesso' };
+    } catch (error) {
+      throw new BadRequestException(`Erro ao remover motorista: ${error.message}`);
     }
-
-    // Notificar remoção do motorista
-    this.notificationsService.notify({
-      type: 'DRIVER_REMOVED',
-      data: { id, message: 'Motorista removido com sucesso' },
-    });
-
-    return { message: 'Motorista removido com sucesso' };
   }
 
+  /**
+   * Atribui um veículo ao motorista.
+   * @param driverId ID do motorista.
+   * @param vehicleId ID do veículo.
+   */
   async assignVehicle(driverId: string, vehicleId: string): Promise<Driver> {
     const driver = await this.findOne(driverId);
     const vehicle = await this.vehicleRepository.findOne({ where: { id: vehicleId } });
@@ -119,11 +156,14 @@ export class DriversService {
 
   /**
    * Atualiza a documentação e o status de aprovação do motorista.
-   * Esse método representa uma etapa do funil de validação.
+   * @param driverId ID do motorista.
+   * @param updateDriverDocumentsDto Dados para atualização dos documentos.
+   * @param userId ID do usuário que está atualizando os documentos.
    */
-  async updateDriverDocuments(driverId: string, updateDriverDocumentsDto: UpdateDriverDocumentsDto): Promise<Driver> {
+  async updateDriverDocuments(driverId: string, updateDriverDocumentsDto: UpdateDriverDocumentsDto, userId: string): Promise<Driver> {
     const driver = await this.findOne(driverId);
     Object.assign(driver, updateDriverDocumentsDto);
+    driver.updatedBy = userId;
     try {
       const updatedDriver = await this.driverRepository.save(driver);
 
