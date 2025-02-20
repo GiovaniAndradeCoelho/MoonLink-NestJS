@@ -22,8 +22,8 @@ import { NotificationsModule } from '../notifications/notifications.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Vehicle]), // Register the Vehicle entity with TypeORM.
-    NotificationsModule, // Import the notifications module for sending alerts.
+    TypeOrmModule.forFeature([Vehicle]),
+    NotificationsModule,
   ],
   controllers: [VehiclesController],
   providers: [VehiclesService],
