@@ -1,8 +1,9 @@
 // src/modules/drivers/drivers.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, Repository, IsNull } from 'typeorm';
-import { Driver, DriverApprovalStatus } from './entities/driver.entity';
+import { Driver } from './entities/driver.entity';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
 import { UpdateDriverDocumentsDto } from './dto/update-driver-documents.dto';
@@ -11,6 +12,8 @@ import { NotificationsService } from '../notifications/notifications/notificatio
 
 @Injectable()
 export class DriversService {
+  private readonly logger = new Logger(DriversService.name);
+
   constructor(
     @InjectRepository(Driver)
     private readonly driverRepository: Repository<Driver>,
@@ -20,9 +23,12 @@ export class DriversService {
   ) {}
 
   /**
-   * Cria um novo motorista.
-   * @param createDriverDto Dados para criação do motorista.
-   * @param userId ID do usuário que está criando o motorista.
+   * Creates a new driver.
+   *
+   * @param createDriverDto - Data for creating the driver.
+   * @param userId - ID of the user creating the driver.
+   * @returns A promise that resolves to the created Driver.
+   * @throws {BadRequestException} If an error occurs during creation.
    */
   async create(createDriverDto: CreateDriverDto, userId: string): Promise<Driver> {
     try {
@@ -32,20 +38,28 @@ export class DriversService {
       });
       const savedDriver = await this.driverRepository.save(driver);
 
-      // Notificar criação de motorista
-      this.notificationsService.notify({
-        type: 'DRIVER_CREATED',
-        data: savedDriver,
-      });
+      // Notify driver creation
+      try {
+        this.notificationsService.notify({
+          type: 'DRIVER_CREATED',
+          data: savedDriver,
+        });
+      } catch (notifyError) {
+        this.logger.error(`Notification error on driver creation: ${notifyError.message}`);
+      }
 
       return savedDriver;
     } catch (error) {
-      throw new BadRequestException(`Erro ao criar motorista: ${error.message}`);
+      this.logger.error(`Error creating driver: ${error.message}`);
+      throw new BadRequestException(`Error creating driver: ${error.message}`);
     }
   }
 
   /**
-   * Retorna todos os motoristas que não foram removidos (soft delete).
+   * Retrieves all drivers that have not been soft-deleted.
+   *
+   * @param select - Optional list of fields to select.
+   * @returns A promise that resolves to an array of Drivers.
    */
   async findAll(select?: string[]): Promise<Driver[]> {
     const options: FindManyOptions<Driver> = {
@@ -64,28 +78,46 @@ export class DriversService {
       options.relations = ['vehicles'];
     }
 
-    return await this.driverRepository.find(options);
+    try {
+      return await this.driverRepository.find(options);
+    } catch (error) {
+      this.logger.error(`Error retrieving drivers: ${error.message}`);
+      throw new BadRequestException(`Error retrieving drivers: ${error.message}`);
+    }
   }
 
   /**
-   * Retorna um motorista pelo seu UUID.
+   * Retrieves a driver by its UUID.
+   *
+   * @param id - The UUID of the driver.
+   * @returns A promise that resolves to the Driver.
+   * @throws {NotFoundException} If the driver is not found.
    */
   async findOne(id: string): Promise<Driver> {
-    const driver = await this.driverRepository.findOne({
-      where: { id, removedAt: IsNull() },
-      relations: ['vehicles'],
-    });
-    if (!driver) {
-      throw new NotFoundException(`Motorista com id ${id} não encontrado`);
+    try {
+      const driver = await this.driverRepository.findOne({
+        where: { id, removedAt: IsNull() },
+        relations: ['vehicles'],
+      });
+      if (!driver) {
+        throw new NotFoundException(`Driver with id ${id} not found`);
+      }
+      return driver;
+    } catch (error) {
+      this.logger.error(`Error retrieving driver: ${error.message}`);
+      throw error;
     }
-    return driver;
   }
 
   /**
-   * Atualiza um motorista existente.
-   * @param id ID do motorista.
-   * @param updateDriverDto Dados para atualização do motorista.
-   * @param userId ID do usuário que está atualizando o motorista.
+   * Updates an existing driver.
+   *
+   * @param id - The UUID of the driver.
+   * @param updateDriverDto - Data for updating the driver.
+   * @param userId - ID of the user performing the update.
+   * @returns A promise that resolves to the updated Driver.
+   * @throws {NotFoundException} If the driver is not found.
+   * @throws {BadRequestException} If an error occurs during the update.
    */
   async update(id: string, updateDriverDto: UpdateDriverDto, userId: string): Promise<Driver> {
     const driver = await this.findOne(id);
@@ -94,22 +126,31 @@ export class DriversService {
     try {
       const updatedDriver = await this.driverRepository.save(driver);
 
-      // Notificar atualização do motorista
-      this.notificationsService.notify({
-        type: 'DRIVER_UPDATED',
-        data: updatedDriver,
-      });
+      // Notify driver update
+      try {
+        this.notificationsService.notify({
+          type: 'DRIVER_UPDATED',
+          data: updatedDriver,
+        });
+      } catch (notifyError) {
+        this.logger.error(`Notification error on driver update: ${notifyError.message}`);
+      }
 
       return updatedDriver;
     } catch (error) {
-      throw new BadRequestException(`Erro ao atualizar motorista: ${error.message}`);
+      this.logger.error(`Error updating driver: ${error.message}`);
+      throw new BadRequestException(`Error updating driver: ${error.message}`);
     }
   }
 
   /**
-   * Realiza a remoção (soft delete) de um motorista.
-   * @param id ID do motorista.
-   * @param userId ID do usuário que está removendo o motorista.
+   * Soft-deletes a driver.
+   *
+   * @param id - The UUID of the driver.
+   * @param userId - ID of the user performing the removal.
+   * @returns A promise that resolves to a success message.
+   * @throws {NotFoundException} If the driver is not found.
+   * @throws {BadRequestException} If an error occurs during removal.
    */
   async remove(id: string, userId: string): Promise<{ message: string }> {
     const driver = await this.findOne(id);
@@ -118,64 +159,95 @@ export class DriversService {
     try {
       await this.driverRepository.save(driver);
 
-      // Notificar remoção do motorista
-      this.notificationsService.notify({
-        type: 'DRIVER_REMOVED',
-        data: { id, message: 'Motorista removido com sucesso' },
-      });
+      // Notify driver removal
+      try {
+        this.notificationsService.notify({
+          type: 'DRIVER_REMOVED',
+          data: { id, message: 'Driver successfully removed' },
+        });
+      } catch (notifyError) {
+        this.logger.error(`Notification error on driver removal: ${notifyError.message}`);
+      }
 
-      return { message: 'Motorista removido com sucesso' };
+      return { message: 'Driver successfully removed' };
     } catch (error) {
-      throw new BadRequestException(`Erro ao remover motorista: ${error.message}`);
+      this.logger.error(`Error removing driver: ${error.message}`);
+      throw new BadRequestException(`Error removing driver: ${error.message}`);
     }
   }
 
   /**
-   * Atribui um veículo ao motorista.
-   * @param driverId ID do motorista.
-   * @param vehicleId ID do veículo.
+   * Assigns a vehicle to a driver.
+   *
+   * @param driverId - The UUID of the driver.
+   * @param vehicleId - The UUID of the vehicle.
+   * @returns A promise that resolves to the updated Driver.
+   * @throws {NotFoundException} If the driver or vehicle is not found.
+   * @throws {BadRequestException} If an error occurs during assignment.
    */
   async assignVehicle(driverId: string, vehicleId: string): Promise<Driver> {
     const driver = await this.findOne(driverId);
     const vehicle = await this.vehicleRepository.findOne({ where: { id: vehicleId } });
     if (!vehicle) {
-      throw new NotFoundException(`Veículo com id ${vehicleId} não encontrado`);
+      throw new NotFoundException(`Vehicle with id ${vehicleId} not found`);
     }
     vehicle.driver = driver;
-    await this.vehicleRepository.save(vehicle);
-    const updatedDriver = await this.findOne(driverId);
+    try {
+      await this.vehicleRepository.save(vehicle);
+      const updatedDriver = await this.findOne(driverId);
 
-    // Notificar atribuição de veículo ao motorista
-    this.notificationsService.notify({
-      type: 'DRIVER_VEHICLE_ASSIGNED',
-      data: { driver: updatedDriver, vehicleId },
-    });
+      // Notify vehicle assignment to driver
+      try {
+        this.notificationsService.notify({
+          type: 'DRIVER_VEHICLE_ASSIGNED',
+          data: { driver: updatedDriver, vehicleId },
+        });
+      } catch (notifyError) {
+        this.logger.error(`Notification error on driver vehicle assignment: ${notifyError.message}`);
+      }
 
-    return updatedDriver;
+      return updatedDriver;
+    } catch (error) {
+      this.logger.error(`Error assigning vehicle to driver: ${error.message}`);
+      throw new BadRequestException(`Error assigning vehicle to driver: ${error.message}`);
+    }
   }
 
   /**
-   * Atualiza a documentação e o status de aprovação do motorista.
-   * @param driverId ID do motorista.
-   * @param updateDriverDocumentsDto Dados para atualização dos documentos.
-   * @param userId ID do usuário que está atualizando os documentos.
+   * Updates a driver's documents and approval status.
+   *
+   * @param driverId - The UUID of the driver.
+   * @param updateDriverDocumentsDto - Data for updating driver documents.
+   * @param userId - ID of the user updating the documents.
+   * @returns A promise that resolves to the updated Driver.
+   * @throws {NotFoundException} If the driver is not found.
+   * @throws {BadRequestException} If an error occurs during the update.
    */
-  async updateDriverDocuments(driverId: string, updateDriverDocumentsDto: UpdateDriverDocumentsDto, userId: string): Promise<Driver> {
+  async updateDriverDocuments(
+    driverId: string,
+    updateDriverDocumentsDto: UpdateDriverDocumentsDto,
+    userId: string,
+  ): Promise<Driver> {
     const driver = await this.findOne(driverId);
     Object.assign(driver, updateDriverDocumentsDto);
     driver.updatedBy = userId;
     try {
       const updatedDriver = await this.driverRepository.save(driver);
 
-      // Notificar atualização dos documentos do motorista
-      this.notificationsService.notify({
-        type: 'DRIVER_DOCUMENTS_UPDATED',
-        data: updatedDriver,
-      });
+      // Notify document update for driver
+      try {
+        this.notificationsService.notify({
+          type: 'DRIVER_DOCUMENTS_UPDATED',
+          data: updatedDriver,
+        });
+      } catch (notifyError) {
+        this.logger.error(`Notification error on driver documents update: ${notifyError.message}`);
+      }
 
       return updatedDriver;
     } catch (error) {
-      throw new BadRequestException(`Erro ao atualizar documentação do motorista: ${error.message}`);
+      this.logger.error(`Error updating driver documents: ${error.message}`);
+      throw new BadRequestException(`Error updating driver documents: ${error.message}`);
     }
   }
 }
