@@ -4,12 +4,14 @@ import { Request, Response, NextFunction } from 'express';
 @Injectable()
 export class AppMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-
     const validToken = process.env.API_SECRET_TOKEN;
     let tokenFromRequest = req.headers['authorization'];
 
     if (!tokenFromRequest) {
-      return res.status(401).json({ message: 'Token não fornecido.' });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'No token provided.',
+      });
     }
 
     if (typeof tokenFromRequest === 'string' && tokenFromRequest.startsWith('Bearer ')) {
@@ -17,7 +19,10 @@ export class AppMiddleware implements NestMiddleware {
     }
 
     if (tokenFromRequest !== validToken) {
-      return res.status(401).json({ message: 'Token inválido.' });
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid token.',
+      });
     }
 
     next();
