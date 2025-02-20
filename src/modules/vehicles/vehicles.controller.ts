@@ -1,5 +1,17 @@
 // src/modules/vehicles/vehicles.controller.ts
-import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus, ValidationPipe } from '@nestjs/common';
+
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  HttpCode,
+  HttpStatus,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ParseUUIDPipe } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import { Vehicle } from './entities/vehicle.entity';
@@ -11,51 +23,66 @@ export class VehiclesController {
   constructor(private readonly vehiclesService: VehiclesService) {}
 
   /**
-   * Cria um novo veículo.
+   * Creates a new vehicle.
+   *
+   * @param createVehicleDto - Data Transfer Object containing vehicle creation data.
+   * @returns A promise that resolves to the newly created Vehicle.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(
+  create(
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     createVehicleDto: CreateVehicleDto,
   ): Promise<Vehicle> {
-    return await this.vehiclesService.create(createVehicleDto);
+    return this.vehiclesService.create(createVehicleDto);
   }
 
   /**
-   * Retorna todos os veículos.
+   * Retrieves all vehicles.
+   *
+   * @returns A promise that resolves to an array of Vehicle objects.
    */
   @Get()
-  async findAll(): Promise<Vehicle[]> {
-    return await this.vehiclesService.findAll();
+  findAll(): Promise<Vehicle[]> {
+    return this.vehiclesService.findAll();
   }
 
   /**
-   * Retorna um veículo pelo seu UUID.
+   * Retrieves a vehicle by its UUID.
+   *
+   * @param id - The UUID of the vehicle.
+   * @returns A promise that resolves to the Vehicle with the given id.
    */
   @Get(':id')
-  async findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<Vehicle> {
-    return await this.vehiclesService.findOne(id);
+  findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<Vehicle> {
+    return this.vehiclesService.findOne(id);
   }
 
   /**
-   * Atualiza um veículo existente.
+   * Updates an existing vehicle.
+   *
+   * @param id - The UUID of the vehicle to update.
+   * @param updateVehicleDto - Data Transfer Object containing updated vehicle data.
+   * @returns A promise that resolves to the updated Vehicle.
    */
   @Put(':id')
-  async update(
+  update(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
     updateVehicleDto: UpdateVehicleDto,
   ): Promise<Vehicle> {
-    return await this.vehiclesService.update(id, updateVehicleDto);
+    return this.vehiclesService.update(id, updateVehicleDto);
   }
 
   /**
-   * Remove um veículo pelo seu UUID.
+   * Removes a vehicle by its UUID.
+   *
+   * @param id - The UUID of the vehicle to remove.
+   * @returns A promise that resolves to an object containing a success message.
    */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<{ message: string }> {
-    return await this.vehiclesService.remove(id);
+  remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<{ message: string }> {
+    return this.vehiclesService.remove(id);
   }
 }
