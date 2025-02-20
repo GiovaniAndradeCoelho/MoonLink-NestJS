@@ -1,5 +1,11 @@
 // src/modules/vehicles/vehicles.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle } from './entities/vehicle.entity';
@@ -9,87 +15,159 @@ import { NotificationsService } from '../notifications/notifications/notificatio
 
 @Injectable()
 export class VehiclesService {
+  private readonly logger = new Logger(VehiclesService.name);
+
   constructor(
     @InjectRepository(Vehicle)
     private readonly vehicleRepository: Repository<Vehicle>,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) { }
 
   /**
-   * Cria um novo veículo.
+   * Creates a new vehicle.
+   *
+   * @param createVehicleDto - Data Transfer Object containing the vehicle creation data.
+   * @returns A promise that resolves to the newly created vehicle.
+   * @throws {BadRequestException} If there is an error during creation.
    */
   async create(createVehicleDto: CreateVehicleDto): Promise<Vehicle> {
     try {
       const vehicle = this.vehicleRepository.create(createVehicleDto);
       const savedVehicle = await this.vehicleRepository.save(vehicle);
 
-      // Envia notificação para criação de veículo
-      this.notificationsService.notify({
-        type: 'CREATE_VEHICLE',
-        data: savedVehicle,
-      });
+      // Notify about the creation of a new vehicle.
+      try {
+        this.notificationsService.notify({
+          type: 'CREATE_VEHICLE',
+          data: savedVehicle,
+        });
+      } catch (notifyError) {
+        this.logger.error(
+          `Notification error on vehicle creation: ${notifyError.message}`,
+        );
+      }
 
       return savedVehicle;
     } catch (error) {
-      throw new BadRequestException(`Erro ao criar veículo: ${error.message}`);
+      this.logger.error(`Error creating vehicle: ${error.message}`);
+      throw new BadRequestException(`Error creating vehicle: ${error.message}`);
     }
   }
 
   /**
-   * Retorna todos os veículos cadastrados.
+   * Retrieves all registered vehicles.
+   *
+   * @returns A promise that resolves to an array of vehicles.
    */
   async findAll(): Promise<Vehicle[]> {
-    return await this.vehicleRepository.find();
+    try {
+      return await this.vehicleRepository.find();
+    } catch (error) {
+      this.logger.error(`Error retrieving vehicles: ${error.message}`);
+      throw new BadRequestException(
+        `Error retrieving vehicles: ${error.message}`,
+      );
+    }
   }
 
   /**
-   * Retorna um veículo pelo seu UUID.
+   * Retrieves a vehicle by its unique identifier.
+   *
+   * @param id - The UUID of the vehicle.
+   * @returns A promise that resolves to the vehicle.
+   * @throws {NotFoundException} If the vehicle is not found.
    */
   async findOne(id: string): Promise<Vehicle> {
-    const vehicle = await this.vehicleRepository.findOne({ where: { id } });
-    if (!vehicle) {
-      throw new NotFoundException(`Veículo com id ${id} não encontrado`);
+    try {
+      const vehicle = await this.vehicleRepository.findOne({ where: { id } });
+      if (!vehicle) {
+        throw new NotFoundException(`Vehicle with id ${id} not found`);
+      }
+      return vehicle;
+    } catch (error) {
+      this.logger.error(`Error retrieving vehicle: ${error.message}`);
+      throw error;
     }
-    return vehicle;
   }
 
   /**
-   * Atualiza os dados de um veículo existente.
+   * Updates an existing vehicle.
+   *
+   * @param id - The UUID of the vehicle to update.
+   * @param updateVehicleDto - Data Transfer Object containing the updated vehicle data.
+   * @returns A promise that resolves to the updated vehicle.
+   * @throws {NotFoundException} If the vehicle is not found.
+   * @throws {BadRequestException} If there is an error during the update.
    */
-  async update(id: string, updateVehicleDto: UpdateVehicleDto): Promise<Vehicle> {
-    const vehicle = await this.findOne(id);
-    Object.assign(vehicle, updateVehicleDto);
+  async update(
+    id: string,
+    updateVehicleDto: UpdateVehicleDto,
+  ): Promise<Vehicle> {
+    // Preload merges the existing entity with the new values.
+    const vehicle = await this.vehicleRepository.preload({
+      id,
+      ...updateVehicleDto,
+    });
+
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle with id ${id} not found`);
+    }
+
     try {
       const updatedVehicle = await this.vehicleRepository.save(vehicle);
 
-      // Envia notificação para atualização de veículo
-      this.notificationsService.notify({
-        type: 'UPDATE_VEHICLE',
-        data: updatedVehicle,
-      });
+      // Notify about the update of the vehicle.
+      try {
+        this.notificationsService.notify({
+          type: 'UPDATE_VEHICLE',
+          data: updatedVehicle,
+        });
+      } catch (notifyError) {
+        this.logger.error(
+          `Notification error on vehicle update: ${notifyError.message}`,
+        );
+      }
 
       return updatedVehicle;
     } catch (error) {
-      throw new BadRequestException(`Erro ao atualizar veículo: ${error.message}`);
+      this.logger.error(`Error updating vehicle: ${error.message}`);
+      throw new BadRequestException(`Error updating vehicle: ${error.message}`);
     }
   }
 
   /**
-   * Remove um veículo pelo seu UUID.
+   * Removes a vehicle by its unique identifier.
+   *
+   * @param id - The UUID of the vehicle to remove.
+   * @returns A promise that resolves to an object containing a success message.
+   * @throws {NotFoundException} If the vehicle is not found.
+   * @throws {BadRequestException} If there is an error during removal.
    */
   async remove(id: string): Promise<{ message: string }> {
-    const vehicle = await this.findOne(id);
-    const result = await this.vehicleRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Veículo com id ${id} não encontrado`);
+    // Ensure the vehicle exists before attempting deletion.
+    await this.findOne(id);
+    try {
+      const result = await this.vehicleRepository.delete(id);
+      if (result.affected === 0) {
+        throw new NotFoundException(`Vehicle with id ${id} not found`);
+      }
+
+      // Notify about the removal of the vehicle.
+      try {
+        this.notificationsService.notify({
+          type: 'REMOVE_VEHICLE',
+          data: { id, message: 'Vehicle successfully removed' },
+        });
+      } catch (notifyError) {
+        this.logger.error(
+          `Notification error on vehicle removal: ${notifyError.message}`,
+        );
+      }
+
+      return { message: 'Vehicle successfully removed' };
+    } catch (error) {
+      this.logger.error(`Error removing vehicle: ${error.message}`);
+      throw new BadRequestException(`Error removing vehicle: ${error.message}`);
     }
-
-    // Envia notificação para remoção de veículo
-    this.notificationsService.notify({
-      type: 'REMOVE_VEHICLE',
-      data: { id, message: 'Veículo removido com sucesso' },
-    });
-
-    return { message: 'Veículo removido com sucesso' };
   }
 }
