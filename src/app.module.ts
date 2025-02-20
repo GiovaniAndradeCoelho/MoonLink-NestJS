@@ -25,7 +25,7 @@ import { AppMiddleware } from './app.middleware';
     TransportsModule,
     RoutingModule,
     NotificationsModule,
-    UsersModule
+    UsersModule,
   ],
   controllers: [],
   providers: [],
@@ -35,8 +35,8 @@ export class AppModule implements NestModule {
     consumer
       .apply(AppMiddleware)
       .exclude(
-        { path: 'auth/*', method: RequestMethod.ALL },
-        { path: 'server/*', method: RequestMethod.ALL }
+        { path: 'auth/*path', method: RequestMethod.ALL },
+        { path: 'server/*path', method: RequestMethod.ALL }
       )
       .forRoutes('*');
   }
