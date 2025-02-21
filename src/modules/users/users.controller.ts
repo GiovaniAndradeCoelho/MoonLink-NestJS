@@ -1,72 +1,145 @@
-// src/modules/users/users.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+// src/modules/users/users.controller.ts
+
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  ValidationPipe,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { BlockUserDto } from './dto/block-user.dto';
+import { BanUserDto } from './dto/ban-user.dto';
+import { UsersService } from './users.service';
 
-@Injectable()
-export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private readonly usersRepository: Repository<User>,
-  ) {}
+/**
+ * UsersController handles user-related HTTP requests.
+ * Provides endpoints to create, retrieve, update, delete, block/unblock, and ban/unban users.
+ */
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.usersRepository.create(createUserDto);
-    return await this.usersRepository.save(user);
+  /**
+   * Creates a new user.
+   *
+   * @param createUserDto - Data Transfer Object containing user creation data.
+   * @returns The newly created user.
+   */
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    createUserDto: CreateUserDto,
+  ) {
+    return this.usersService.create(createUserDto);
   }
 
-  async findAll(): Promise<User[]> {
-    return await this.usersRepository.find();
+  /**
+   * Retrieves all users.
+   *
+   * @returns An array of users.
+   */
+  @Get()
+  findAll() {
+    return this.usersService.findAll();
   }
 
-  async findOne(id: string): Promise<User> {
-    const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
-    return user;
+  /**
+   * Retrieves a user by its ID.
+   *
+   * @param id - The ID of the user.
+   * @returns The user with the specified ID.
+   */
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOne(id);
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    await this.usersRepository.update(id, updateUserDto);
-    return this.findOne(id);
+  /**
+   * Updates an existing user.
+   *
+   * @param id - The ID of the user to update.
+   * @param updateUserDto - Data Transfer Object containing updated user data.
+   * @returns The updated user.
+   */
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    updateUserDto: UpdateUserDto,
+  ) {
+    return this.usersService.update(id, updateUserDto);
   }
 
-  async remove(id: string): Promise<void> {
-    const result = await this.usersRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
+  /**
+   * Removes a user.
+   *
+   * @param id - The ID of the user to remove.
+   * @returns The removed user.
+   */
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
   }
 
-  async blockUser(id: string, blockReason?: string): Promise<User> {
-    const user = await this.findOne(id);
-    user.isBlocked = true;
-    user.blockReason = blockReason;
-    return this.usersRepository.save(user);
+  /**
+   * Blocks a user.
+   *
+   * @param id - The ID of the user to block.
+   * @param blockUserDto - DTO containing the block reason.
+   * @returns The blocked user.
+   */
+  @Patch(':id/block')
+  blockUser(
+    @Param('id') id: string,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    blockUserDto: BlockUserDto,
+  ) {
+    return this.usersService.blockUser(id, blockUserDto.blockReason);
   }
 
-  async unblockUser(id: string): Promise<User> {
-    const user = await this.findOne(id);
-    user.isBlocked = false;
-    user.blockReason = null;
-    return this.usersRepository.save(user);
+  /**
+   * Unblocks a user.
+   *
+   * @param id - The ID of the user to unblock.
+   * @returns The unblocked user.
+   */
+  @Patch(':id/unblock')
+  unblockUser(@Param('id') id: string) {
+    return this.usersService.unblockUser(id);
   }
 
-  async banUser(id: string, banReason?: string): Promise<User> {
-    const user = await this.findOne(id);
-    user.isBanned = true;
-    user.banReason = banReason;
-    return this.usersRepository.save(user);
+  /**
+   * Bans a user.
+   *
+   * @param id - The ID of the user to ban.
+   * @param banUserDto - DTO containing the ban reason.
+   * @returns The banned user.
+   */
+  @Patch(':id/ban')
+  banUser(
+    @Param('id') id: string,
+    @Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+    banUserDto: BanUserDto,
+  ) {
+    return this.usersService.banUser(id, banUserDto.banReason);
   }
 
-  async unbanUser(id: string): Promise<User> {
-    const user = await this.findOne(id);
-    user.isBanned = false;
-    user.banReason = null;
-    return this.usersRepository.save(user);
+  /**
+   * Unbans a user.
+   *
+   * @param id - The ID of the user to unban.
+   * @returns The unbanned user.
+   */
+  @Patch(':id/unban')
+  unbanUser(@Param('id') id: string) {
+    return this.usersService.unbanUser(id);
   }
 }
