@@ -1,4 +1,5 @@
 // src/modules/transports/transports.controller.ts
+
 import { Controller, Get, Post, Put, Delete, Param, Body, HttpCode, HttpStatus, ValidationPipe } from '@nestjs/common';
 import { ParseUUIDPipe } from '@nestjs/common';
 import { TransportsService } from './transports.service';
@@ -6,12 +7,18 @@ import { Transport } from './entities/transport.entity';
 import { CreateTransportDto } from './dto/create-transport.dto';
 import { UpdateTransportDto } from './dto/update-transport.dto';
 
+/**
+ * TransportsController provides RESTful endpoints for managing transports.
+ */
 @Controller('transports')
 export class TransportsController {
   constructor(private readonly transportsService: TransportsService) {}
 
   /**
-   * Cria um novo transporte.
+   * Creates a new transport.
+   *
+   * @param createTransportDto - DTO containing transport creation data.
+   * @returns A promise that resolves to the created Transport.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -23,7 +30,9 @@ export class TransportsController {
   }
 
   /**
-   * Retorna todos os transportes.
+   * Retrieves all transports.
+   *
+   * @returns A promise that resolves to an array of Transport objects.
    */
   @Get()
   async findAll(): Promise<Transport[]> {
@@ -31,7 +40,10 @@ export class TransportsController {
   }
 
   /**
-   * Retorna um transporte pelo seu UUID.
+   * Retrieves a transport by its UUID.
+   *
+   * @param id - The UUID of the transport.
+   * @returns A promise that resolves to the Transport.
    */
   @Get(':id')
   async findOne(@Param('id', new ParseUUIDPipe()) id: string): Promise<Transport> {
@@ -39,7 +51,11 @@ export class TransportsController {
   }
 
   /**
-   * Atualiza os dados de um transporte existente.
+   * Updates an existing transport.
+   *
+   * @param id - The UUID of the transport to update.
+   * @param updateTransportDto - DTO containing updated transport data.
+   * @returns A promise that resolves to the updated Transport.
    */
   @Put(':id')
   async update(
@@ -51,7 +67,10 @@ export class TransportsController {
   }
 
   /**
-   * Remove um transporte pelo seu UUID.
+   * Removes a transport by its UUID.
+   *
+   * @param id - The UUID of the transport to remove.
+   * @returns A promise that resolves to an object with a success message.
    */
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
